@@ -200,7 +200,7 @@ class Solver():
             tuple: A tuple containing:
                 - r2c (float): The revenue-to-cost ratio for the placement of the VNR.
                 - p_load (float): The average p_load of the substrate nodes involved in the VNR placement.
-                - reward (float): The calculated reward based on the revenue-to-cost ratio and the average p_load.
+                - reward (float): The calculated reward based on the revenue-to-cost ratio, load balance, and reliability margin.
         """    
         r2c=self.rev2cost(vnr)
         '''
@@ -212,19 +212,25 @@ class Solver():
         return r2c,p_load,self.sigma*r2c+(1-self.sigma)/math.exp(p_load)
         '''
     
-        # Collect p_load of all mapped nodes
+        # Collect p_load and reliability margins for all mapped nodes
         p_loads = []
+        reliability_margins = []
         for i in range(vnr.num_vnfs):
-            p_loads.append(sn.snode[vnr.nodemapping[i]].p_load)
+            mapped_idx = vnr.nodemapping[i]
+            snode = sn.snode[mapped_idx]
+            p_loads.append(snode.p_load)
+            reliability_margins.append(max(0.0, snode.reliability - vnr.vnode[i].req_reliability))
         
         p_load_mean = np.mean(p_loads)
         p_load_std = np.std(p_loads)  # Mesure de variance/équilibre
+        reliability_margin_mean = np.mean(reliability_margins) if reliability_margins else 0.0
         
         # Récompenser une distribution équilibrée (faible variance)
-        # Plus l'écart-type est petit, plus balance_factor est proche de 1
         balance_factor = 1.0 / (1.0 + p_load_std)  # Varie entre 0 et 1
+        # Récompenser une marge de fiabilité au-delà du minimum requis
+        reliability_factor = 1.0 + reliability_margin_mean
         
-        reward = self.sigma * r2c + (1 - self.sigma) * math.exp(-p_load_mean) * balance_factor
+        reward = self.sigma * r2c + (1 - self.sigma) * math.exp(-p_load_mean) * balance_factor * reliability_factor
         
         return r2c,p_load_mean,reward
     
