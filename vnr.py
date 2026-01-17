@@ -24,7 +24,7 @@ def generate_connected_er_graph(num_nodes, probability):
 class VNR:
     ID_ = 0
     """ A class variable used to assign a unique identifier to each VNR instance.  """
-    def __init__(self,vnf_range, cpu_range, bw_range,lt_range,flavor_size,duration,mtbs):
+    def __init__(self,vnf_range, cpu_range, bw_range,lt_range, reliability_range, flavor_size,duration,mtbs):
         VNR.ID_+=1
         self.mtbs=mtbs
         """ Mean time between scale demands that arrive during the VNF lifespan """
@@ -56,7 +56,8 @@ class VNR:
         #----------------------------------------------------------------#
         for i in range(self.num_vnfs):
             cpu=np.random.randint(cpu_range[0],cpu_range[1]//2)
-            vno = Vnf(i,cpu,cpu_range[1],self.id,flavor_size,p_scalingUp)
+            req_reliability = np.random.uniform(reliability_range[0], reliability_range[1])
+            vno = Vnf(i,cpu,cpu_range[1],self.id,flavor_size,p_scalingUp, req_reliability)
             self.vnode.append(vno)
         #----------------------------------------------------------------#
         # Edges Creation
@@ -255,6 +256,7 @@ class VNR:
         bw_min = np.array([el.min_bw(self.vedege) for el in vnf], dtype=np.float32)
         degree = np.array([el.degree for el in vnf], dtype=np.float32)
         p_max_cpu = np.array([el.p_maxCpu for el in vnf], dtype=np.float32)
+        req_reliability = np.array([el.req_reliability for el in vnf], dtype=np.float32)
 
         def safe_scale(x):
             m = np.max(x)
@@ -277,6 +279,7 @@ class VNR:
                 scaled_bw_min,
                 scaled_degree,
                 scaled_p_max_cpu,
+                req_reliability
             ]
         )
 
@@ -302,6 +305,7 @@ class VNR:
         bw_max = np.array([el.max_bw(self.vedege) for el in vnf], dtype=np.float32)
         bw_min = np.array([el.min_bw(self.vedege) for el in vnf], dtype=np.float32)
         degree = np.array([el.degree for el in vnf], dtype=np.float32)
+        req_reliability = np.array([el.req_reliability for el in vnf], dtype=np.float32)
 
         def safe_scale(x):
             m = np.max(x)
@@ -322,6 +326,7 @@ class VNR:
                 scaled_bw_max,
                 scaled_bw_min,
                 scaled_degree,
+                req_reliability
             ]
         )
 

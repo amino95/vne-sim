@@ -95,7 +95,7 @@ class PPOAgent(object):
         """
         self.memory.store_transition(transition)
 
-    def choose_action(self, observation, vnf_cpu, sn_cpu):
+    def choose_action(self, observation, vnf_cpu, sn_cpu, vnf_reliability=0, sn_reliability=None):
         """
         Choose an action using the current policy with epsilon-greedy exploration.
         
@@ -121,7 +121,11 @@ class PPOAgent(object):
         # Epsilon-greedy action selection
         if np.random.random() < self.epsilon:
             # Select legal actions based on available CPU resources
-            legal_actions = np.array([index for index, element in enumerate(sn_cpu) 
+            if sn_reliability is not None:
+                legal_actions = np.array([index for index, element in enumerate(sn_cpu) 
+                                     if element > vnf_cpu and sn_reliability[index] >= vnf_reliability])
+            else:
+                legal_actions = np.array([index for index, element in enumerate(sn_cpu) 
                                      if element > vnf_cpu])
             legal_actions = legal_actions[~np.isin(legal_actions, illegal_actions)]
             

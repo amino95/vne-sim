@@ -680,7 +680,7 @@ class GNNDRL(Solver):
             vnr.nodemapping (list): Updated mapping of VNR nodes to substrate nodes.
         """
         nsuccess=True
-        action,value,log_prob=self.agent.choose_action(observation,vnr.vnode[idx].cpu,sn.getCpu())
+        action,value,log_prob=self.agent.choose_action(observation,vnr.vnode[idx].cpu,sn.getCpu(), vnr.vnode[idx].req_reliability, sn.getReliability())
         if action>=0 and sn.snode[action].lastcpu> vnr.vnode[idx].cpu:
             sn.snode[action].lastcpu-=vnr.vnode[idx].cpu
             sn.snode[action].vnodeindexs.append([vnr.id,idx])
@@ -823,7 +823,7 @@ class FirstFit(Solver):
         sn = random.sample(list(range(len(sb.snode))), len(sb.snode))
         for vi in range(vn):
             for i,si in enumerate(sn):
-                if vnr.vnode[vi].cpu<sb.snode[si].lastcpu and si not in  v2sindex:
+                if vnr.vnode[vi].cpu<sb.snode[si].lastcpu and sb.snode[si].reliability >= vnr.vnode[vi].req_reliability and si not in  v2sindex:
                     v2sindex.append(si) 
                     break
                 else:
@@ -1050,7 +1050,7 @@ class GNNDRL2(Solver):
            
     def nodemapping(self,observation,sn,vnr,idx):
         nsuccess=True
-        action,value,log_prob=self.agent.choose_action(observation,vnr.vnode[idx].cpu,sn.getCpu())
+        action,value,log_prob=self.agent.choose_action(observation,vnr.vnode[idx].cpu,sn.getCpu(), vnr.vnode[idx].req_reliability, sn.getReliability())
         if action>=0 and sn.snode[action].lastcpu> vnr.vnode[idx].cpu:
             sn.snode[action].lastcpu-=vnr.vnode[idx].cpu
             sn.snode[action].vnodeindexs.append([vnr.id,idx])
@@ -1245,7 +1245,7 @@ class GNNDRLPPO(Solver):
     def nodemapping(self, observation, sn, vnr, idx):
         """Map a VNF to a substrate node"""
         nsuccess = True
-        action, value, log_prob = self.agent.choose_action(observation, vnr.vnode[idx].cpu, sn.getCpu())
+        action, value, log_prob = self.agent.choose_action(observation, vnr.vnode[idx].cpu, sn.getCpu(), vnr.vnode[idx].req_reliability, sn.getReliability())
         
         if action >= 0 and sn.snode[action].lastcpu > vnr.vnode[idx].cpu:
             sn.snode[action].lastcpu -= vnr.vnode[idx].cpu
@@ -1342,6 +1342,53 @@ class GNNDRLPPO(Solver):
                 
         return success
 
+class GraspSolver(FirstFit):
+    """
+    GRASP (Greedy Randomized Adaptive Search Procedure) Solver.
+    
+    This solver constructs a solution by iteratively selecting the best candidate 
+    from a Restricted Candidate List (RCL). The RCL is formed by the best alpha% 
+    of candidates based on a greedy function (here, available CPU).
+    """
+    def __init__(self, sigma, rejection_penalty, alpha=0.2):
+        super().__init__(sigma, rejection_penalty)
+        self.alpha = alpha
+        """ The threshold parameter for the Restricted Candidate List (RCL). 
+            0 = Pure Greedy, 1 = Pure Random. """
+
+    def nodemapping(self, sb, vnr):
+        vn = vnr.num_vnfs
+        v2sindex = []
+        used_sns = [] # Track used substrate nodes to ensure 1-to-1 mapping
+        
+        for vi in range(vn):
+            candidates = []
+            scores = []
+            
+            # Identify valid candidates
+            for si, snode in enumerate(sb.snode):
+                if si not in used_sns:
+                    # Check constraints: CPU and Reliability
+                    if snode.lastcpu >= vnr.vnode[vi].cpu and snode.reliability >= vnr.vnode[vi].req_reliability:
+                        candidates.append(si)
+                        scores.append(snode.lastcpu) # Greedy score: Residual CPU
+            
+            if not candidates:
+                return False, []
+            
+            # Build Restricted Candidate List (RCL)
+            min_s = min(scores)
+            max_s = max(scores)
+            threshold = max_s - self.alpha * (max_s - min_s)
+            
+            rcl = [cand for cand, score in zip(candidates, scores) if score >= threshold]
+            
+            # Select element from RCL
+            selected_sn = random.choice(rcl)
+            v2sindex.append(selected_sn)
+            used_sns.append(selected_sn)
+            
+        return True, v2sindex
 
     
 

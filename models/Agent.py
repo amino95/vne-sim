@@ -86,7 +86,7 @@ class Agent(object):
     def store_transition(self,transition):
         self.memory.store(transition)
         
-    def choose_action(self,observation,vnf_cpu,sn_cpu):
+    def choose_action(self,observation,vnf_cpu,sn_cpu, vnf_reliability=0, sn_reliability=None):
             """
             Chooses an action based on the current observation using an epsilon-greedy strategy.
 
@@ -110,7 +110,10 @@ class Agent(object):
             # Epsilon-greedy action selection
             if  np.random.random() < self.epsilon:
                 # Select legal actions based on available CPU resources
-                legal_actions = np.array([index for index, element in enumerate(sn_cpu) if element > vnf_cpu])
+                if sn_reliability is not None:
+                    legal_actions = np.array([index for index, element in enumerate(sn_cpu) if element > vnf_cpu and sn_reliability[index] >= vnf_reliability])
+                else:
+                    legal_actions = np.array([index for index, element in enumerate(sn_cpu) if element > vnf_cpu])
                 legal_actions=legal_actions[~np.isin(legal_actions,illegal_actions)]
                 
                 # Randomly choose an action from the legal actions if available

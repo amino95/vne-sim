@@ -30,6 +30,7 @@ cpu_range = json_object['cpu_range']
 numnodes = json_object['numnodes']
 bw_range = json_object['bw_range']
 lt_range = json_object['lt_range']
+reliability_range = json_object.get('reliability_range', [0.9, 0.99])
 # Virtual network related parameters
 num_reqs = json_object['num_reqs'] # number of simultaneous requests for the vnr generator
 vnfs_range =json_object['vnfs_range']
@@ -53,11 +54,15 @@ Seeds = [317805,7671309,222111,310320]#np.random.randint(42947296, size=REPEAT_E
 
 
 
+# Update solvers inputs to account for the new reliability feature
+for s in solvers_inputs:
+    if "num_inputs_sn" in s: s["num_inputs_sn"] += 1
+    if "num_inputs_vnr" in s: s["num_inputs_vnr"] += 1
 
 # Create a substrate environment
 topology  = 'generated_network.matrix'
 topology =  nx.Graph(np.loadtxt(topology, dtype=int))
-old_subNet= SN(numnodes, cpu_range, bw_range,lt_range,topology)
+old_subNet= SN(numnodes, cpu_range, bw_range,lt_range, reliability_range, topology)
 
 old_subNet.drawSN(edege_label=True)
 old_subNet.msg()
@@ -106,12 +111,18 @@ for j in range(len(MTBA)):
                 solvers_inputs[i].get("ppo_epochs", 4),
                 solvers_inputs[i].get("entropy_coef", 0.01)
             ))
+        if solvers_inputs[i]["type"]=="GRASP":
+            solvers.append(GraspSolver(
+                solvers_inputs[i]["sigma"],
+                solvers_inputs[i]["rejection_penalty"],
+                solvers_inputs[i].get("alpha", 0.2)
+            ))
         
     controller=Controller(solvers_names,sns,env,episode_duration,results_location,episode_per_file,max_vnfs)
     global_solver=GlobalSolver(solvers)
     manoSimulator=ManoSimulator(global_solver,solvers_names,sns,env,controller)
     start=time.time()
-    generator=Generator(vnr_classes, MLT, MTBS, MTBA[j], vnfs_range, vcpu_range, vbw_range,vlt_range, flavor_tab, p_flavors,len(solvers_inputs))  
+    generator=Generator(vnr_classes, MLT, MTBS, MTBA[j], vnfs_range, vcpu_range, vbw_range,vlt_range, reliability_range, flavor_tab, p_flavors,len(solvers_inputs))  
     env.process(generator.VnrGenerator_poisson(env,manoSimulator))
     env.process(controller.simulation_controller())
     # Execute!
@@ -120,4 +131,3 @@ for j in range(len(MTBA)):
     
     
     
-
