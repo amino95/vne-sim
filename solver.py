@@ -189,8 +189,13 @@ class Solver():
     
     def getReward(self,vnr,sn):
         """
-        Calculates the reward for placing a virtual network request (VNR) in the substrate network. 
-        The reward is computed as: Reward = sigma * R2C + (1 - sigma) * e^(-p_load)
+        Calculates the reward for placing a virtual network request (VNR) in the substrate network.
+        
+        The reward formula prioritizes reliability as the primary optimization objective:
+        Reward = 0.6 * reliability_factor + 0.4 * (sigma * R2C + (1-sigma) * exp(-p_load) * balance_factor)
+        
+        This ensures that placements with better reliability margins are strongly preferred,
+        while still maintaining secondary objectives around revenue efficiency and load balance.
 
         Args:
             vnr: The virtual network request 
@@ -200,33 +205,37 @@ class Solver():
             tuple: A tuple containing:
                 - r2c (float): The revenue-to-cost ratio for the placement of the VNR.
                 - p_load (float): The average p_load of the substrate nodes involved in the VNR placement.
-                - reward (float): The calculated reward based on the revenue-to-cost ratio and the average p_load.
+                - reward (float): The calculated reward based primarily on reliability, secondarily on R2C and load balance.
+                - reliability_margin_mean (float): The average reliability margin across all mapped nodes.
         """    
         r2c=self.rev2cost(vnr)
-        '''
-        p_load=0
-        for i in range(vnr.num_vnfs):
-            p_load=p_load+sn.snode[vnr.nodemapping[i]].p_load
-        p_load=p_load/vnr.num_vnfs
-        
-        return r2c,p_load,self.sigma*r2c+(1-self.sigma)/math.exp(p_load)
-        '''
     
-        # Collect p_load of all mapped nodes
+        # Collect p_load and reliability margins for all mapped nodes
         p_loads = []
+        reliability_margins = []
         for i in range(vnr.num_vnfs):
-            p_loads.append(sn.snode[vnr.nodemapping[i]].p_load)
+            mapped_idx = vnr.nodemapping[i]
+            snode = sn.snode[mapped_idx]
+            p_loads.append(snode.p_load)
+            reliability_margins.append(max(0.0, snode.reliability - vnr.vnode[i].req_reliability))
         
         p_load_mean = np.mean(p_loads)
         p_load_std = np.std(p_loads)  # Mesure de variance/équilibre
+        reliability_margin_mean = np.mean(reliability_margins) if reliability_margins else 0.0
         
         # Récompenser une distribution équilibrée (faible variance)
-        # Plus l'écart-type est petit, plus balance_factor est proche de 1
         balance_factor = 1.0 / (1.0 + p_load_std)  # Varie entre 0 et 1
         
-        reward = self.sigma * r2c + (1 - self.sigma) * math.exp(-p_load_mean) * balance_factor
+        # PRIMARY OBJECTIVE: Maximize reliability margin
+        reliability_factor = 1.0 + reliability_margin_mean
         
-        return r2c,p_load_mean,reward
+        # SECONDARY OBJECTIVE: Optimize R2C and load balance
+        secondary_reward = self.sigma * r2c + (1 - self.sigma) * math.exp(-p_load_mean) * balance_factor
+        
+        # Combine with 60% weight on reliability (PRIMARY) and 40% on secondary objectives
+        reward = 0.6 * reliability_factor + 0.4 * secondary_reward
+        
+        return r2c,p_load_mean,reward,reliability_margin_mean
     
     
 class GNNDQN(Solver):
@@ -345,7 +354,7 @@ class GNNDQN(Solver):
                             if idx == num_vnfs-1:
 
                                 success= True
-                                r2c,p_load,self.saved_reward=self.getReward(vnr, sn_c)
+                                r2c,p_load,self.saved_reward,reliability_margin=self.getReward(vnr, sn_c)
                                 self.saved_observation=dc(obs)
                                 self.saved_action=action
                                 self.saved_done=True
@@ -392,10 +401,10 @@ class GNNDQN(Solver):
                     
             if success:
 
-                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':self.saved_reward,'sn':sn_c,'cause':None,'nb_iter':0}
+                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':self.saved_reward,'sn':sn_c,'cause':None,'nb_iter':0,'reliability_margin':reliability_margin}
                 return results
             else : 
-                results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty ,'sn':sn,'cause':cause,'nb_iter':0}
+                results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty ,'sn':sn,'cause':cause,'nb_iter':0,'reliability_margin':0}
                 return results
             
            
@@ -621,7 +630,7 @@ class GNNDRL(Solver):
                             if idx == num_vnfs-1:
 
                                 success= True
-                                r2c,p_load,reward=self.getReward(vnr, sn_c)
+                                r2c,p_load,reward,reliability_margin=self.getReward(vnr, sn_c)
                                 transition.store_step(obs,action,reward, True)
                                 self.saved_transition = transition
                                 vnr.edgemapping=ve2seindex
@@ -654,10 +663,10 @@ class GNNDRL(Solver):
                     
             if success:
 
-                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':self.saved_reward,'sn':sn_c,'cause':None,'nb_iter':0}
+                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':self.saved_reward,'sn':sn_c,'cause':None,'nb_iter':0,'reliability_margin':reliability_margin}
                 return results
             else : 
-                results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty ,'sn':sn,'cause':cause,'nb_iter':0}
+                results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty ,'sn':sn,'cause':cause,'nb_iter':0,'reliability_margin':0}
                 return results
             
            
@@ -867,8 +876,8 @@ class FirstFit(Solver):
                 vnr.nodemapping=v2sindex
                 vnr.edgemapping=vese2index
                 r2c=self.rev2cost(vnr)
-                r2c,p_load,metric=self.getReward(vnr, sb)
-                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':metric,'sn':sb,'cause':None,'nb_iter':None}
+                r2c,p_load,metric,reliability_margin=self.getReward(vnr, sb)
+                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':metric,'sn':sb,'cause':None,'nb_iter':None,'reliability_margin':reliability_margin}
                 return results
 
         else:
@@ -877,7 +886,7 @@ class FirstFit(Solver):
                 cause = "node"
             else : 
                 cause = 'edge'
-            results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty,'sn':sb,'cause':cause,'nb_iter':None}    
+            results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty,'sn':sb,'cause':cause,'nb_iter':None,'reliability_margin':0}    
             return results
         
 
@@ -1006,7 +1015,7 @@ class GNNDRL2(Solver):
                             if idx == num_vnfs-1:
 
                                 success= True
-                                r2c,p_load,reward=self.getReward(vnr, sn_c)
+                                r2c,p_load,reward,reliability_margin=self.getReward(vnr, sn_c)
                                 transition.store_step(obs,action,reward, True)
                                 self.saved_transition = transition
                                 vnr.edgemapping=ve2seindex
@@ -1041,10 +1050,10 @@ class GNNDRL2(Solver):
                     
             if success:
 
-                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':self.saved_reward,'sn':sn_c,'cause':None,'nb_iter':0}
+                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':self.saved_reward,'sn':sn_c,'cause':None,'nb_iter':0,'reliability_margin':reliability_margin}
                 return results
             else : 
-                results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty ,'sn':sn,'cause':cause,'nb_iter':0}
+                results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty ,'sn':sn,'cause':cause,'nb_iter':0,'reliability_margin':0}
                 return results
             
            
@@ -1197,7 +1206,7 @@ class GNNDRLPPO(Solver):
                     if vsuccess:
                         if idx == num_vnfs - 1:
                             success = True
-                            r2c, p_load, reward = self.getReward(vnr, sn_c)
+                            r2c, p_load, reward, reliability_margin = self.getReward(vnr, sn_c)
                             transition.store_step(obs, action, reward, True)
                             self.saved_transition = transition
                             vnr.edgemapping = ve2seindex
@@ -1231,14 +1240,14 @@ class GNNDRLPPO(Solver):
                 'success': success, 'nodemapping': vnr.nodemapping, 
                 'edgemapping': vnr.edgemapping, 'nb_vnfs': vnr.num_vnfs, 
                 "nb_vls": vnr.num_vedges, 'R2C': r2c, 'p_load': p_load, 
-                'reward': self.saved_reward, 'sn': sn_c, 'cause': None, 'nb_iter': 0
+                'reward': self.saved_reward, 'sn': sn_c, 'cause': None, 'nb_iter': 0, 'reliability_margin': reliability_margin
             }
             return results
         else:
             results = {
                 'success': success, 'nodemapping': [], 'edgemapping': [], 
                 'nb_vnfs': 0, "nb_vls": 0, 'R2C': 0, 'p_load': 0, 
-                'reward': self.rejection_penalty, 'sn': sn, 'cause': cause, 'nb_iter': 0
+                'reward': self.rejection_penalty, 'sn': sn, 'cause': cause, 'nb_iter': 0, 'reliability_margin': 0
             }
             return results
            

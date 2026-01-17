@@ -3,6 +3,8 @@ __pycache__/*
 .github/*
 .venv/*
 vne-env/*
+venv/*
+.idea/
 
 *.pyc
 
