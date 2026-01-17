@@ -1,0 +1,14 @@
+./git/*
+__pycache__/*
+.github/*
+.venv/*
+vne-env/*
+
+*.pyc
+
+Results/*
+
+
+package-lock.json
+*.log
+build/

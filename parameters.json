@@ -1,0 +1,197 @@
+{
+     "OUTPUT_PATH": "Results/history/test",
+     "SIM_TIME": [
+          600000
+     ],
+     "start_mean_calculation": 1000,
+     "REPEAT_EXPERIENCE": 1,
+     "MTBA": [
+          2
+     ],
+     "MLT": [
+          12,
+          10,
+          8
+     ],
+     "vnr_classes": [
+          0.2,
+          0.3,
+          0.5
+     ],
+     "MTBS": [
+          6,
+          5,
+          4
+     ],
+     "flavors": [
+          4,
+          3,
+          2
+     ],
+     "p_flavors": [
+          0.1,
+          0.3,
+          0.6
+     ],
+     "beta": 0.5,
+     "cpu_range": [
+          9,
+          28
+     ],
+     "numnodes": 24,
+     "bw_range": [
+          28,
+          55
+     ],
+     "lt_range": [
+          1,
+          9
+     ],
+     "num_reqs": 1,
+     "vnfs_range": [
+          3,
+          7
+     ],
+     "vcpu_range": [
+          1,
+          11
+     ],
+     "vbw_range": [
+          1,
+          11
+     ],
+     "vlt_range": [
+          16,
+          25
+     ],
+     "episode_duration": 1000,
+     "episode_per_file": 5,
+     "solvers": [
+          {
+               "name": "Rkhami",
+               "type": "GNNDRL2",
+               "sigma": 1.0,
+               "gamma": 0.99,
+               "rejection_penalty": -1,
+               "learning_rate": 1e-3,
+               "epsilon": 1,
+               "memory_size": 1000000,
+               "batch_size": 32,
+               "num_inputs_sn": 7,
+               "num_inputs_vnr": 6,
+               "hidden_size": 64,
+               "GCN_out": 32,
+               "num_actions": 24,
+               "max_itteration": 1,
+               "eps_min": 0.01,
+               "eps_dec": 2.5e-5
+          },
+          {
+               "name": "sigma_0.5",
+               "type": "GNNDRL",
+               "sigma": 0.5,
+               "gamma": 0.99,
+               "rejection_penalty": -1,
+               "learning_rate": 1e-3,
+               "epsilon": 1,
+               "memory_size": 1000000,
+               "batch_size": 32,
+               "num_inputs_sn": 8,
+               "num_inputs_vnr": 7,
+               "hidden_size": 64,
+               "GCN_out": 32,
+               "num_actions": 24,
+               "max_itteration": 32,
+               "eps_min": 0.01,
+               "eps_dec": 2.5e-5
+          },
+          {
+               "name": "sigma_0.8",
+               "type": "GNNDRL",
+               "sigma": 0.8,
+               "gamma": 0.99,
+               "rejection_penalty": -1,
+               "learning_rate": 1e-3,
+               "epsilon": 1,
+               "memory_size": 1000000,
+               "batch_size": 32,
+               "num_inputs_sn": 8,
+               "num_inputs_vnr": 7,
+               "hidden_size": 64,
+               "GCN_out": 32,
+               "num_actions": 24,
+               "max_itteration": 32,
+               "eps_min": 0.01,
+               "eps_dec": 2.5e-5
+          },
+          {
+               "name": "sigma_0.2",
+               "type": "GNNDRL",
+               "sigma": 0.2,
+               "gamma": 0.99,
+               "rejection_penalty": -1,
+               "learning_rate": 1e-3,
+               "epsilon": 1,
+               "memory_size": 1000000,
+               "batch_size": 32,
+               "num_inputs_sn": 8,
+               "num_inputs_vnr": 7,
+               "hidden_size": 64,
+               "GCN_out": 32,
+               "num_actions": 24,
+               "max_itteration": 32,
+               "eps_min": 0.01,
+               "eps_dec": 2.5e-5
+          },
+          {
+               "name": "Firstfit",
+               "type": "FF",
+               "sigma": 0.5,
+               "rejection_penalty": -1
+          },
+          {
+               "name": "PPO",
+               "type": "GNNDRL2",
+               "sigma": 0.5,
+               "gamma": 0.99,
+               "rejection_penalty": -1,
+               "learning_rate": 0.0003,
+               "epsilon": 1,
+               "memory_size": 1000000,
+               "batch_size": 64,
+               "num_inputs_sn": 7,
+               "num_inputs_vnr": 6,
+               "hidden_size": 64,
+               "GCN_out": 32,
+               "num_actions": 24,
+               "max_itteration": 32,
+               "eps_min": 0.01,
+               "eps_dec": 2.5e-5,
+               "clip_ratio": 0.2,
+               "ppo_epochs": 4,
+               "entropy_coef": 0.01
+          },
+          {
+               "name": "PPOS",
+               "type": "GNNDRL",
+               "sigma": 0.5,
+               "gamma": 0.99,
+               "rejection_penalty": -1,
+               "learning_rate": 0.0003,
+               "epsilon": 1,
+               "memory_size": 1000000,
+               "batch_size": 64,
+               "num_inputs_sn": 8,
+               "num_inputs_vnr": 7,
+               "hidden_size": 64,
+               "GCN_out": 32,
+               "num_actions": 24,
+               "max_itteration": 32,
+               "eps_min": 0.01,
+               "eps_dec": 2.5e-5,
+               "clip_ratio": 0.2,
+               "ppo_epochs": 4,
+               "entropy_coef": 0.01
+          }
+     ]
+}
