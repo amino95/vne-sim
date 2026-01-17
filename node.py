@@ -41,7 +41,7 @@ class Node:
 
 class Vnf(Node):
     
-    def __init__(self, index,cpu,cpu_max,req,flavor_size,p_scalingUp):
+    def __init__(self, index,cpu,cpu_max,req,flavor_size,p_scalingUp, req_reliability=0.0):
         super().__init__(index, cpu)
         self.flavor = []
         """ A predefined range of CPU capacity options that the VNF can request based on its scaling needs, Each flavor is a multiple of the base CPU (i*self.cpu), as long as it doesn't exceed the maximum CPU capacity (cpu_max)"""
@@ -85,6 +85,8 @@ class Vnf(Node):
             - If the value is 0, the VNF is not the current one.
             - If the value is 1, the VNF is the current one for placement.
         """
+        self.req_reliability = req_reliability
+        """ The reliability requirement for the VNF. """
 
     def max_bw(self,edges):
         """
@@ -110,7 +112,7 @@ class Vnf(Node):
         
     def __str__(self):
        """ Returns a dictionary containing key attributes of the VNF """
-       return {'vnf':str(self.index),'cpu':str(self.cpu),'cpu index':str(self.cpu_index),'flavor':self.flavor,'max_cpu':str(self.p_maxCpu),'bw':str(self.bw),'neighbors':str(self.neighbors),'placement':str(self.sn_host)}
+       return {'vnf':str(self.index),'cpu':str(self.cpu),'cpu index':str(self.cpu_index),'flavor':self.flavor,'max_cpu':str(self.p_maxCpu),'bw':str(self.bw),'neighbors':str(self.neighbors),'placement':str(self.sn_host), 'req_reliability': str(self.req_reliability)}
     
     def dm_scaling(self,scale_up):
         """
@@ -134,7 +136,7 @@ class Vnf(Node):
         
 class Snode(Node):
     
-    def __init__(self,index,cpu):
+    def __init__(self,index,cpu, reliability=1.0):
 
         super().__init__(index, cpu)
         self.lastcpu=cpu
@@ -145,11 +147,13 @@ class Snode(Node):
         """ A list of VNFs hosted on this node, where each entry contains the VNR ID and the corresponding VNF ID in the format [vnr.id,vnf.index]"""
         self.p_load=0
         """ The node's potential load, representing the total potential load from all VNFs hosted on this node. It is calculated as the sum of the maximum potential CPU of each hosted VNF, divided by the node's maximum CPU capacity. """
+        self.reliability = reliability
+        """ The reliability factor of the substrate node. """
         
 
     def __str__(self):
         """ Returns a dictionary containing key attributes of the Snode """
-        return {'snode' :str(self.index), 'cpu': str(self.cpu), 'lastcpu': str(self.lastcpu),'vnodeindexs':self.vnodeindexs,'neighbors': self.neighbors,'bw':str(self.bw),'lastbw':str(self.lastbw),'p_load':str(self.p_load)}
+        return {'snode' :str(self.index), 'cpu': str(self.cpu), 'lastcpu': str(self.lastcpu),'vnodeindexs':self.vnodeindexs,'neighbors': self.neighbors,'bw':str(self.bw),'lastbw':str(self.lastbw),'p_load':str(self.p_load), 'reliability': str(self.reliability)}
 
     def max_bw(self,edges):
         """Returns the maximum remaining bandwidth from all the links connected to this node."""

@@ -74,9 +74,9 @@ class Result_saver():
         """
         Create folders to save results, ensuring no duplication of folder names to avoid errors or accidental overwriting of results.
         """
-        os.makedirs(self.result_location,exist_ok=False)
-        os.makedirs(self.sn_state_folder,exist_ok=False)
-        os.makedirs(self.vnr_state_folder,exist_ok=False)
+        os.makedirs(self.result_location,exist_ok=True)
+        os.makedirs(self.sn_state_folder,exist_ok=True)
+        os.makedirs(self.vnr_state_folder,exist_ok=True)
 
     def init_files(self):
         """  Initialize results file with headers"""

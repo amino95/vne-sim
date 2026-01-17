@@ -17,7 +17,7 @@ _DEVICE_CACHE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class SN :
     
-    def __init__(self, num_nodes, cpu_range, bw_range,lt_range,topology):
+    def __init__(self, num_nodes, cpu_range, bw_range,lt_range, reliability_range, topology):
 
         self.num_nodes = num_nodes
         """  Total number of nodes in the substrate network"""
@@ -36,7 +36,8 @@ class SN :
         #-------------------------------------------------------------#
         for i in range(self.num_nodes):
             cpu = np.random.randint(cpu_range[0],cpu_range[1])
-            self.snode.append(Snode(i,cpu))
+            reliability = np.random.uniform(reliability_range[0], reliability_range[1])
+            self.snode.append(Snode(i,cpu, reliability))
         #-------------------------------------------------------------#
 
         # Sedges Creation
@@ -117,6 +118,18 @@ class SN :
             cpu.append(node.lastcpu)
         return cpu
     
+    def getReliability(self):
+        """ 
+        Returns the reliability of each substrate node in the SN.
+        
+        Returns:
+            list: A list containing the reliability for each node in the SN.
+        """
+        rel = []
+        for node in self.snode:
+            rel.append(node.reliability)
+        return rel
+
     def copy_for_placement(self):
         """
         Fast copy of SN for VNR placement. Only copies state, not topology.
@@ -134,7 +147,7 @@ class SN :
         sn_copy.edges = self.edges  # Share edge list
         
         # Only deep copy the nodes (which have mutable state)
-        sn_copy.snode = [Snode(node.index, node.cpu) for node in self.snode]
+        sn_copy.snode = [Snode(node.index, node.cpu, node.reliability) for node in self.snode]
         for i, node_copy in enumerate(sn_copy.snode):
             node_copy.lastcpu = self.snode[i].lastcpu
             node_copy.vnodeindexs = self.snode[i].vnodeindexs.copy()
@@ -357,6 +370,7 @@ class SN :
         bw_min = np.array([n.min_bw(self.sedege) for n in snode], dtype=np.float32)
         degree = np.array([n.degree for n in snode], dtype=np.float32)
         p_load = np.array([n.p_load for n in snode], dtype=np.float32)
+        reliability = np.array([n.reliability for n in snode], dtype=np.float32)
 
         # Petites gardes pour éviter div/0
         def safe_scale(x):
@@ -382,6 +396,7 @@ class SN :
                 scaled_bw_min,
                 scaled_degree,
                 p_load,  # p_load n’est pas normalisé dans la version originale ; on le laisse brut pour conserver la sémantique
+                reliability
             ]
         )
         
@@ -410,6 +425,7 @@ class SN :
         bw_max = np.array([n.max_bw(self.sedege) for n in snode], dtype=np.float32)
         bw_min = np.array([n.min_bw(self.sedege) for n in snode], dtype=np.float32)
         degree = np.array([n.degree for n in snode], dtype=np.float32)
+        reliability = np.array([n.reliability for n in snode], dtype=np.float32)
 
         def safe_scale(x):
             m = np.max(x)
@@ -433,6 +449,7 @@ class SN :
                 scaled_bw_max,
                 scaled_bw_min,
                 scaled_degree,
+                reliability
             ]
         )
         
