@@ -18,6 +18,8 @@ class Result_saver():
         """ A list containing the R2C ratio for each placement during a single episode. """
         self.reward =[]
         """ A list containing the Reward for each placement during a single episode. """
+        self.reliability_margins = []
+        """ A list containing the average reliability margin for each placement during a single episode. """
 
 
         self.nb_requests = 0
@@ -92,22 +94,24 @@ class Result_saver():
 
             
 
-    def mapping_result(self,success,reward,R2C,cause=None,nb_iter=None):
+    def mapping_result(self,success,reward,R2C,reliability_margin=0,cause=None,nb_iter=None):
         """
         This function records the results of a VNR placement attempt, including whether the placement was successful, 
-        the associated reward, the R2C value, the cause of rejection (if applicable), and the number 
+        the associated reward, the R2C value, reliability margin, the cause of rejection (if applicable), and the number 
         of iterations needed for successful placement.
 
         Parameters:
         - success (bool): Indicates if the VNR placement was successful.
         - reward (float): The reward value associated with the placement.
         - R2C (float): The Revenu to Cost value of the placement.
+        - reliability_margin (float): The reliability margin achieved in the placement. Default is 0.
         - cause (str, optional): Specifies the reason for a rejection, either 'node' or 'edge'. Default is None.
         - nb_iter (int, optional): The number of iterations required for the VNR placement. Only used for successful placements.
         """
         self.nb_requests+=1
         self.R2C.append(R2C)
         self.reward.append(reward)
+        self.reliability_margins.append(reliability_margin)
         if success:
             self.nb_accepted_requests+=1
             if nb_iter:
@@ -170,6 +174,7 @@ class Result_saver():
         """
         self.R2C= []
         self.reward =[]
+        self.reliability_margins = []
         
         self.nb_requests = 0
         self.nb_accepted_requests =0
@@ -301,10 +306,11 @@ class Global_controller():
                 acceptance_rate = (rs.nb_accepted_requests / rs.nb_requests * 100) if rs.nb_requests > 0 else 0
                 avg_reward = np.mean(rs.reward) if len(rs.reward) > 0 else 0
                 avg_r2c = np.mean(rs.R2C) if len(rs.R2C) > 0 else 0
+                avg_reliability = np.mean(rs.reliability_margins) if len(rs.reliability_margins) > 0 else 0
                 
                 print(f"\n🔧 {self.solvers[i]}:")
                 print(f"  ├─ Requests: {rs.nb_accepted_requests}/{rs.nb_requests} accepted ({acceptance_rate:.1f}%)")
-                print(f"  ├─ Avg Reward: {avg_reward:.3f} | Avg R2C: {avg_r2c:.3f}")
+                print(f"  ├─ 💰 Reward: {avg_reward:.4f} | 📊 R2C: {avg_r2c:.4f} | 🛡️  Reliability: {avg_reliability:.4f}")
                 print(f"  ├─ Rejections: Node={rs.rejection_cause['node']}, Edge={rs.rejection_cause['edge']}")
                 if len(rs.used_ressources['used_cpu']) > 0:
                     print(f"  └─ Resources: CPU={np.mean(rs.used_ressources['used_cpu']):.1f}, BW={np.mean(rs.used_ressources['used_bw']):.1f}")
@@ -327,7 +333,7 @@ class Global_controller():
         and records the state of the substrate network.
         """
         for i in range(len(self.solvers)):
-            self.result_savers[i].mapping_result(results[i]['success'],results[i]['reward'],results[i]['R2C'],results[i]['cause'],results[i]['nb_iter'])
+            self.result_savers[i].mapping_result(results[i]['success'],results[i]['reward'],results[i]['R2C'],results[i]['reliability_margin'],results[i]['cause'],results[i]['nb_iter'])
             self.result_savers[i].save_placement(self.result_savers[i].episode_counter,results[i]['reward'],results[i]['R2C'],results[i]['nb_iter'],results[i]['nodemapping'])
             self.result_savers[i].sn_state(sns[i])
             self.result_savers[i].update_used_ressources(sns[i])

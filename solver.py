@@ -232,7 +232,7 @@ class Solver():
         
         reward = self.sigma * r2c + (1 - self.sigma) * math.exp(-p_load_mean) * balance_factor * reliability_factor
         
-        return r2c,p_load_mean,reward
+        return r2c,p_load_mean,reward,reliability_margin_mean
     
     
 class GNNDQN(Solver):
@@ -351,7 +351,7 @@ class GNNDQN(Solver):
                             if idx == num_vnfs-1:
 
                                 success= True
-                                r2c,p_load,self.saved_reward=self.getReward(vnr, sn_c)
+                                r2c,p_load,self.saved_reward,reliability_margin=self.getReward(vnr, sn_c)
                                 self.saved_observation=dc(obs)
                                 self.saved_action=action
                                 self.saved_done=True
@@ -398,10 +398,10 @@ class GNNDQN(Solver):
                     
             if success:
 
-                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':self.saved_reward,'sn':sn_c,'cause':None,'nb_iter':0}
+                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':self.saved_reward,'sn':sn_c,'cause':None,'nb_iter':0,'reliability_margin':reliability_margin}
                 return results
             else : 
-                results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty ,'sn':sn,'cause':cause,'nb_iter':0}
+                results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty ,'sn':sn,'cause':cause,'nb_iter':0,'reliability_margin':0}
                 return results
             
            
@@ -627,7 +627,7 @@ class GNNDRL(Solver):
                             if idx == num_vnfs-1:
 
                                 success= True
-                                r2c,p_load,reward=self.getReward(vnr, sn_c)
+                                r2c,p_load,reward,reliability_margin=self.getReward(vnr, sn_c)
                                 transition.store_step(obs,action,reward, True)
                                 self.saved_transition = transition
                                 vnr.edgemapping=ve2seindex
@@ -660,10 +660,10 @@ class GNNDRL(Solver):
                     
             if success:
 
-                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':self.saved_reward,'sn':sn_c,'cause':None,'nb_iter':0}
+                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':self.saved_reward,'sn':sn_c,'cause':None,'nb_iter':0,'reliability_margin':reliability_margin}
                 return results
             else : 
-                results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty ,'sn':sn,'cause':cause,'nb_iter':0}
+                results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty ,'sn':sn,'cause':cause,'nb_iter':0,'reliability_margin':0}
                 return results
             
            
@@ -873,8 +873,8 @@ class FirstFit(Solver):
                 vnr.nodemapping=v2sindex
                 vnr.edgemapping=vese2index
                 r2c=self.rev2cost(vnr)
-                r2c,p_load,metric=self.getReward(vnr, sb)
-                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':metric,'sn':sb,'cause':None,'nb_iter':None}
+                r2c,p_load,metric,reliability_margin=self.getReward(vnr, sb)
+                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':metric,'sn':sb,'cause':None,'nb_iter':None,'reliability_margin':reliability_margin}
                 return results
 
         else:
@@ -883,7 +883,7 @@ class FirstFit(Solver):
                 cause = "node"
             else : 
                 cause = 'edge'
-            results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty,'sn':sb,'cause':cause,'nb_iter':None}    
+            results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty,'sn':sb,'cause':cause,'nb_iter':None,'reliability_margin':0}    
             return results
         
 
@@ -1012,7 +1012,7 @@ class GNNDRL2(Solver):
                             if idx == num_vnfs-1:
 
                                 success= True
-                                r2c,p_load,reward=self.getReward(vnr, sn_c)
+                                r2c,p_load,reward,reliability_margin=self.getReward(vnr, sn_c)
                                 transition.store_step(obs,action,reward, True)
                                 self.saved_transition = transition
                                 vnr.edgemapping=ve2seindex
@@ -1047,10 +1047,10 @@ class GNNDRL2(Solver):
                     
             if success:
 
-                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':self.saved_reward,'sn':sn_c,'cause':None,'nb_iter':0}
+                results={'success':success,'nodemapping':vnr.nodemapping,'edgemapping':vnr.edgemapping,'nb_vnfs':vnr.num_vnfs,"nb_vls":vnr.num_vedges,'R2C':r2c,'p_load':p_load,'reward':self.saved_reward,'sn':sn_c,'cause':None,'nb_iter':0,'reliability_margin':reliability_margin}
                 return results
             else : 
-                results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty ,'sn':sn,'cause':cause,'nb_iter':0}
+                results={'success':success,'nodemapping':[],'edgemapping':[],'nb_vnfs':0,"nb_vls":0,'R2C':0,'p_load':0,'reward':self.rejection_penalty ,'sn':sn,'cause':cause,'nb_iter':0,'reliability_margin':0}
                 return results
             
            
@@ -1203,7 +1203,7 @@ class GNNDRLPPO(Solver):
                     if vsuccess:
                         if idx == num_vnfs - 1:
                             success = True
-                            r2c, p_load, reward = self.getReward(vnr, sn_c)
+                            r2c, p_load, reward, reliability_margin = self.getReward(vnr, sn_c)
                             transition.store_step(obs, action, reward, True)
                             self.saved_transition = transition
                             vnr.edgemapping = ve2seindex
@@ -1237,14 +1237,14 @@ class GNNDRLPPO(Solver):
                 'success': success, 'nodemapping': vnr.nodemapping, 
                 'edgemapping': vnr.edgemapping, 'nb_vnfs': vnr.num_vnfs, 
                 "nb_vls": vnr.num_vedges, 'R2C': r2c, 'p_load': p_load, 
-                'reward': self.saved_reward, 'sn': sn_c, 'cause': None, 'nb_iter': 0
+                'reward': self.saved_reward, 'sn': sn_c, 'cause': None, 'nb_iter': 0, 'reliability_margin': reliability_margin
             }
             return results
         else:
             results = {
                 'success': success, 'nodemapping': [], 'edgemapping': [], 
                 'nb_vnfs': 0, "nb_vls": 0, 'R2C': 0, 'p_load': 0, 
-                'reward': self.rejection_penalty, 'sn': sn, 'cause': cause, 'nb_iter': 0
+                'reward': self.rejection_penalty, 'sn': sn, 'cause': cause, 'nb_iter': 0, 'reliability_margin': 0
             }
             return results
            
