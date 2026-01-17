@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import json
+from tqdm import tqdm
 
 
 class Result_saver():
@@ -255,12 +256,34 @@ class Global_controller():
         """
         import time
         
+        # Initialize progress bar
+        self.pbar = None
+        
         while True:
             # Record episode start time
             if self.episode_start_time is None:
                 self.episode_start_time = time.time()
             
-            yield self.env.timeout(self.episode_duration)
+            # Create progress bar for this episode
+            if self.pbar is None:
+                episode_num = self.result_savers[0].episode_counter + 1
+                self.pbar = tqdm(total=self.episode_duration, 
+                               desc=f"Episode {episode_num}",
+                               unit="time",
+                               bar_format='{desc}: {percentage:3.0f}%|{bar}| {n:.0f}/{total:.0f} [{elapsed}<{remaining}]')
+            
+            # Update progress bar periodically during episode
+            start_time = self.env.now
+            update_interval = self.episode_duration / 100  # Update 100 times per episode
+            
+            for _ in range(100):
+                yield self.env.timeout(update_interval)
+                self.pbar.update(update_interval)
+            
+            # Close current progress bar
+            if self.pbar is not None:
+                self.pbar.close()
+                self.pbar = None
             
             # Calculate episode duration
             episode_elapsed = time.time() - self.episode_start_time

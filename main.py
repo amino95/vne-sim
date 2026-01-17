@@ -64,8 +64,8 @@ topology  = 'generated_network.matrix'
 topology =  nx.Graph(np.loadtxt(topology, dtype=int))
 old_subNet= SN(numnodes, cpu_range, bw_range,lt_range, reliability_range, topology)
 
-old_subNet.drawSN(edege_label=True)
-old_subNet.msg()
+#old_subNet.drawSN(edege_label=True)
+#old_subNet.msg()
 
 
 
