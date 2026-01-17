@@ -1,0 +1,5 @@
+{
+  "github.copilot.chat.welcomeMessage": "never",
+  "workbench.panel.defaultLocation": "right",
+  "github.copilot.editor.enableAutoCompletions": true
+}
