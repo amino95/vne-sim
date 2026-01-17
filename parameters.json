@@ -192,6 +192,13 @@
                "clip_ratio": 0.2,
                "ppo_epochs": 4,
                "entropy_coef": 0.01
+          },
+          {
+               "name": "GRASP",
+               "type": "GRASP",
+               "sigma": 0.5,
+               "rejection_penalty": -1,
+               "alpha": 0.2
           }
      ]
 }
