@@ -189,8 +189,13 @@ class Solver():
     
     def getReward(self,vnr,sn):
         """
-        Calculates the reward for placing a virtual network request (VNR) in the substrate network. 
-        The reward is computed as: Reward = sigma * R2C + (1 - sigma) * e^(-p_load)
+        Calculates the reward for placing a virtual network request (VNR) in the substrate network.
+        
+        The reward formula prioritizes reliability as the primary optimization objective:
+        Reward = 0.6 * reliability_factor + 0.4 * (sigma * R2C + (1-sigma) * exp(-p_load) * balance_factor)
+        
+        This ensures that placements with better reliability margins are strongly preferred,
+        while still maintaining secondary objectives around revenue efficiency and load balance.
 
         Args:
             vnr: The virtual network request 
@@ -200,17 +205,10 @@ class Solver():
             tuple: A tuple containing:
                 - r2c (float): The revenue-to-cost ratio for the placement of the VNR.
                 - p_load (float): The average p_load of the substrate nodes involved in the VNR placement.
-                - reward (float): The calculated reward based on the revenue-to-cost ratio, load balance, and reliability margin.
+                - reward (float): The calculated reward based primarily on reliability, secondarily on R2C and load balance.
+                - reliability_margin_mean (float): The average reliability margin across all mapped nodes.
         """    
         r2c=self.rev2cost(vnr)
-        '''
-        p_load=0
-        for i in range(vnr.num_vnfs):
-            p_load=p_load+sn.snode[vnr.nodemapping[i]].p_load
-        p_load=p_load/vnr.num_vnfs
-        
-        return r2c,p_load,self.sigma*r2c+(1-self.sigma)/math.exp(p_load)
-        '''
     
         # Collect p_load and reliability margins for all mapped nodes
         p_loads = []
@@ -227,10 +225,15 @@ class Solver():
         
         # Récompenser une distribution équilibrée (faible variance)
         balance_factor = 1.0 / (1.0 + p_load_std)  # Varie entre 0 et 1
-        # Récompenser une marge de fiabilité au-delà du minimum requis
+        
+        # PRIMARY OBJECTIVE: Maximize reliability margin
         reliability_factor = 1.0 + reliability_margin_mean
         
-        reward = self.sigma * r2c + (1 - self.sigma) * math.exp(-p_load_mean) * balance_factor * reliability_factor
+        # SECONDARY OBJECTIVE: Optimize R2C and load balance
+        secondary_reward = self.sigma * r2c + (1 - self.sigma) * math.exp(-p_load_mean) * balance_factor
+        
+        # Combine with 60% weight on reliability (PRIMARY) and 40% on secondary objectives
+        reward = 0.6 * reliability_factor + 0.4 * secondary_reward
         
         return r2c,p_load_mean,reward,reliability_margin_mean
     
